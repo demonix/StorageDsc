@@ -125,13 +125,17 @@ function Get-TargetResource
         -DiskId $DiskId `
         -DiskIdType $DiskIdType
 
-    $partition = Get-Partition `
-        -DriveLetter $DriveLetter `
+    $diskPartitions = $disk | Get-Partition -ErrorAction SilentlyContinue
+    
+    $partition = $diskPartitions |
+        Where-Object -Property DriveLetter -eq $DriveLetter -ErrorAction SilentlyContinue
+
+    $volumesOnPartition = Get-Volume `
+        -Partition $partition `
         -ErrorAction SilentlyContinue
 
-    $volume = Get-Volume `
-        -DriveLetter $DriveLetter `
-        -ErrorAction SilentlyContinue
+    $volume = $volumesOnPartition |
+        Where-Property DriveLetter -eq $DriveLetter -ErrorAction SilentlyContinue
 
     $blockSize = (Get-CimInstance `
             -Query "SELECT BlockSize from Win32_Volume WHERE DriveLetter = '$($DriveLetter):'" `
@@ -793,9 +797,10 @@ function Test-TargetResource
         }
     } # if
 
-    $partition = Get-Partition `
-        -DriveLetter $DriveLetter `
-        -ErrorAction SilentlyContinue
+    $diskPartitions = $disk | Get-Partition -ErrorAction SilentlyContinue
+    
+    $partition = $diskPartitions |
+        Where-Object -Property DriveLetter -eq $DriveLetter -ErrorAction SilentlyContinue
 
     if ($partition.DriveLetter -ne $DriveLetter)
     {
@@ -864,9 +869,12 @@ function Test-TargetResource
     } # if
 
     # Get the volume so the properties can be checked
-    $volume = Get-Volume `
-        -DriveLetter $DriveLetter `
+    $volumesOnPartition = Get-Volume `
+        -Partition $partition `
         -ErrorAction SilentlyContinue
+
+    $volume = $volumesOnPartition |
+        Where-Property DriveLetter -eq $DriveLetter -ErrorAction SilentlyContinue
 
     if ($PSBoundParameters.ContainsKey('FSFormat'))
     {
