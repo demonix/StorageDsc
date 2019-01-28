@@ -130,12 +130,13 @@ function Get-TargetResource
     $partition = $diskPartitions |
         Where-Object -Property DriveLetter -eq $DriveLetter -ErrorAction SilentlyContinue
 
+    $volumeId = "\\?\Volume{{{0}}}\" -f $partition.Guid.TrimStart('{').TrimEnd('}')
     $volumesOnPartition = Get-Volume `
-        -Partition $partition `
+        -UniqueId $volumeId `
         -ErrorAction SilentlyContinue
 
     $volume = $volumesOnPartition |
-        Where-Property DriveLetter -eq $DriveLetter -ErrorAction SilentlyContinue
+        Where-Object -Property DriveLetter -eq $DriveLetter -ErrorAction SilentlyContinue
 
     $blockSize = (Get-CimInstance `
             -Query "SELECT BlockSize from Win32_Volume WHERE DriveLetter = '$($DriveLetter):'" `
@@ -385,8 +386,8 @@ function Set-TargetResource
                     # Look for the volume in the partition.
                     Write-Verbose -Message ($localizedData.SearchForVolumeMessage `
                             -f $DiskIdType, $DiskId, $searchPartition.PartitionNumber, $FSFormat)
-
-                    $searchVolumes = $searchPartition | Get-Volume
+					$volumeId = "\\?\Volume{{{0}}}\" -f $searchPartition.Guid.TrimStart('{').TrimEnd('}')
+                    $searchVolumes = Get-Volume -UniqueId $volumeId -ErrorAction SilentlyContinue
 
                     $volumeMatch = $searchVolumes | Where-Object -FilterScript {
                         $_.FileSystem -eq $FSFormat
@@ -542,7 +543,8 @@ function Set-TargetResource
     }
 
     # Get the Volume on the partition
-    $volume = $partition | Get-Volume
+	$volumeId = "\\?\Volume{{{0}}}\" -f $partition.Guid.TrimStart('{').TrimEnd('}')
+    $volume = Get-Volume -UniqueId $volumeId -ErrorAction SilentlyContinue
 
     # Is the volume already formatted?
     if ($volume.FileSystem -eq '')
@@ -869,12 +871,13 @@ function Test-TargetResource
     } # if
 
     # Get the volume so the properties can be checked
+	$volumeId = "\\?\Volume{{{0}}}\" -f $partition.Guid.TrimStart('{').TrimEnd('}')
     $volumesOnPartition = Get-Volume `
-        -Partition $partition `
+        -UniqueId $volumeId `
         -ErrorAction SilentlyContinue
 
     $volume = $volumesOnPartition |
-        Where-Property DriveLetter -eq $DriveLetter -ErrorAction SilentlyContinue
+        Where-Object -Property DriveLetter -eq $DriveLetter -ErrorAction SilentlyContinue
 
     if ($PSBoundParameters.ContainsKey('FSFormat'))
     {
